@@ -6,9 +6,12 @@ const BaseUrl = 'https://pixabay.com/api/';
 const loader = document.querySelector('.loader');
 
 export function searchImages(searchQuery) {
+  // Usuwamy spacje z searchQuery
+  const sanitizedSearchQuery = searchQuery.replace(/\s/g, '');
+
   const params = new URLSearchParams({
     key: API_KEY,
-    q: searchQuery,
+    q: sanitizedSearchQuery, // Używamy zsanityzowanej wersji wyszukiwania
     image_type: 'photo',
     orientation: 'horizontal',
     safesearch: true,
