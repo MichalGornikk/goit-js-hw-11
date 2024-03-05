@@ -1,8 +1,9 @@
 import iziToast from 'izitoast';
-import 'izitoast/dist/css/iziToast.min.css';
 
 const API_KEY = '42651463-7e9bc4d6a898bed570bd4622e';
 const BaseUrl = 'https://pixabay.com/api/';
+let currentPage = 1;
+const perPage = 40;
 
 function trackNetworkRequests() {
   var originalOpen = XMLHttpRequest.prototype.open;
@@ -16,21 +17,31 @@ function trackNetworkRequests() {
   };
 }
 
+function displayErrorToast(message) {
+  iziToast.error({
+    title: 'Error',
+    fontSize: 'large',
+    close: false,
+    position: 'topRight',
+    messageColor: 'white',
+    timeout: 2000,
+    backgroundColor: 'red',
+    message: message,
+  });
+}
+
 export function searchImages(searchQuery) {
   if (searchQuery.trim() === '') {
-    iziToast.error({
-      title: 'Error',
-      fontSize: 'large',
-      close: false,
-      position: 'topRight',
-      messageColor: 'white',
-      timeout: 2000,
-      backgroundColor: 'red',
-      message: 'Please enter some text.',
-    });
+    displayErrorToast('Please enter some text.');
     return Promise.reject('Please enter some text.');
   }
 
+  currentPage = 1;
+
+  return fetchImages(searchQuery);
+}
+
+function fetchImages(searchQuery) {
   const keywords = searchQuery.trim().split(/\s+/);
   const sanitizedKeywords = keywords.join('+');
 
@@ -40,6 +51,8 @@ export function searchImages(searchQuery) {
     image_type: 'photo',
     orientation: 'horizontal',
     safesearch: true,
+    page: currentPage,
+    per_page: perPage,
   });
 
   trackNetworkRequests();
@@ -47,25 +60,49 @@ export function searchImages(searchQuery) {
   return fetch(BaseUrl + '?' + params)
     .then(response => {
       if (!response.ok) {
-        throw new Error('Network response was not OK');
+        throw new Error('Your network bad working ');
       }
       return response.json();
     })
     .then(data => {
       if (data.hits.length === 0) {
-        iziToast.error({
-          title: 'Error',
+        displayErrorToast('U can try again :D');
+      }
+
+      currentPage++;
+
+      return data;
+    })
+    .catch(error => console.error(error));
+}
+
+export function loadMoreImages(searchQuery) {
+  return fetchImages(searchQuery)
+    .then(data => {
+      const gallery = document.getElementById('gallery');
+      data.hits.forEach(image => {
+        const imgElement = document.createElement('img');
+        imgElement.src = image.previewURL;
+
+        gallery.appendChild(imgElement);
+      });
+
+      const loadMoreButton = document.querySelector('.load-more');
+      if (data.totalHits <= currentPage * perPage) {
+        loadMoreButton.style.display = 'none';
+        iziToast.info({
+          title: 'Info',
           fontSize: 'large',
           close: false,
           position: 'topRight',
           messageColor: 'white',
           timeout: 2000,
-          backgroundColor: 'red',
-          message:
-            'Sorry, there are no images matching your search query. Please try again!',
+          backgroundColor: 'blue',
+          message: "We're sorry, but you've reached the end of search results.",
         });
+      } else {
+        loadMoreButton.style.display = 'block';
       }
-      return data;
     })
     .catch(error => console.error(error));
 }
